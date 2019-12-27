@@ -1,5 +1,5 @@
 \documentclass[11pt,a4paper,oneside]{article}
-\usepackage[a4paper,top=2cm,bottom=2.5cm,left=2.5cm,right=2cm]{geometry}
+\usepackage[a4paper,top=2cm,bottom=2.5cm,left=1.8cm,right=1.8cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[italian]{babel}
@@ -48,7 +48,7 @@ Andiamo, quindi, ad analizzare la funzione di autocorrelazione e anche da essa v
 > plot(diff(to))
 > acf(diff(to),col="orange")
 \end{verbatim}
-Si nota già meglio che ogni anno è visualizzato da un picco, sottolineando quindi la presenza di stagionalità. Questi picchi sono ben distinti per i primi anni, almeno fino al 2003, per poi cambiare andamento e suddividersi in picchi più confusi tra i vari trimestri. Dalla funzione di autocorrelazione, poi, sembra che così una componente stagionale possa essere effettivamente presente: in corrispondenza dell'inizio di ogni periodo, vediamo che il valore di acf si staglia al di sopra degli altri valori, evento che era stato mascherato nei grafici precedenti dalla presenza di un trend accentuato.
+Si nota già meglio che ogni anno è visualizzato da un picco, sottolineando quindi la presenza di stagionalità. Come già detto, questi picchi sono ben distinti per i primi anni, almeno fino al 2003, per poi cambiare andamento e suddividersi in picchi più confusi tra i vari trimestri. Dalla funzione di autocorrelazione, poi, sembra che così una componente stagionale possa essere effettivamente presente: in corrispondenza dell'inizio di ogni periodo, vediamo che il valore di \textit{acf} si staglia al di sopra degli altri valori, evento che era stato mascherato nei grafici precedenti dalla presenza del trend accentuato.
 \begin{figure}[h]
 \centering
 \subfloat[][\emph{Visualizzazione dei dati al netto del trend}\label{fig:tsplotDiff}]
@@ -68,9 +68,130 @@ Proviamo, ora, a visualizzare l'andamento annuale della serie, sovrapponendo i v
 \end{figure}
 
 \subsection{Decomposizione della serie}
-uv
+Andando avanti con la nostra analisi, effettuiamo la decomposizione della serie nelle componenti di trend, stagionalità e rumore (fig.~\ref{fig:decompose}). Si vede, ancora, che il fenomeno principale della serie è il trend, che ha un andamento crescente, mentre la componente di stagionalità ha ampiezza minore del rumore (fig.~\ref{fig:seasNoise}).
+Sembra, quindi, che la periodicità dei valori della serie, dovuta ai cambi di stagione, sia da trascurare in confronto all'aumento del tasso di occupazione che è stato registrato di anno in anno. 
+\begin{figure}[h]
+\centering
+\subfloat[][\emph{Decomposizione della serie}\label{fig:decompose}]
+{\includegraphics[width=0.5\textwidth]{images/decompose}}
+\subfloat[][\emph{Confronto tra componente di stagionalità e di rumore}\label{fig:seasNoise}]
+{\includegraphics[width=0.5\textwidth]{images/seasNoise}} \\
+\caption{}
+\label{fig:graficiDiff}
+\end{figure}
+
+\subsection{Smorzamento esponenziale}
+Applichiamo il metodo dello smorzamento esponenziale (SE) sulla serie, seguito dallo smorzamento esponenziale con trend (SET), per procedere con l'analisi.
+Sembra che entrambi i metodi, riescano a catturare abbastanza bene l'andamento della serie.
+Cerchiamo di catturare solo la componente di trend della serie storica, andando a modificare i parametri del metodo:
+\begin{verbatim}
+> plot(to.set)
+> points(HoltWinters(to,alpha=0.1,beta=0.01,gamma=F)$fitted,col="blue",type="l")
+\end{verbatim}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{images/trend}
+\caption{SET con parametri settati a mano per catturare il trend}
+\label{fig:trend}
+\end{figure}
+
+Andando ad analizzare, invece, la capacità predittiva dei due modelli, vediamo che manca la componente di stagionalità che, seppur minima, è decisiva per distinguere i vari trimestri, soprattutto a livello di predizione del prossimo futuro.
+
+Ci concentriamo, così, sul metodo dello smorzamento esponenziale che considera sia trend che stagionalità, detto anche metodo di Holt-Winters:
+\begin{verbatim}
+> to.hw=HoltWinters(to)
+> plot(to.hw,lwd=2)
+\end{verbatim}
+Il grafico risultante, che si trova in figura~\ref{fig:hw}, fa notare che l'andamento della serie è molto ben catturato da questo modello. 
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{images/hw}
+\caption{Smorzamento esponenziale con trend e con stagionalità}
+\label{fig:hw}
+\end{figure}
+
+Proviamo, inoltre, a effettuare una previsione dei valori del prossimo anno, ottenendo risultati decisamente attendibili (fig.~\ref{fig:hwPrevisioni}), mentre provando a prevedere l'andamento del tasso di occupazione per più anni il risultato non è esaltante, visto che la previsione del primo anno viene ripetuta altre due volte, un po’ traslata verso l'alto, seguendo un trend del tutto lineare. 
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{images/hwPrevisioni}
+\caption{Smorzamento esponenziale con previsione}
+\label{fig:hwPrevisioni}
+\end{figure}
+
+\subsection{Estrazione dei residui}
+Procediamo ad analizzare i residui del modello costruito con il metodo di Holt-Winters, per vedere se in essi è rimasta una struttura o se possano essere considerati con buona approssimazione gaussiani.
+\begin{verbatim}
+> to.hw.r=as.vector(residuals(to.hw))
+> plot(to.hw.r,pch=20)
+> 1 - var(to.hw.r)/var(to)
+          Value
+Value 0.9959087
+\end{verbatim}
+
+La varianza spiegata ottenuta, uguale al 99\% è molto soddisfacente. Guardando la funzione di autocorrelazione si nota una periodicità, segno che i residui mantengono parte della componente stagionale della serie.
+Comunque, dal grafico dei residui in figura~\ref{fig:hwResid}, si nota che essi sono abbastanza sparsi. 
+Portando avanti la loro analisi, vediamo che l'istogramma è molto simile a quello di una distribuzione gaussiana con stessa media e deviazione standard. Anche il grafico quantile-quantile è abbastanza buono, con la maggior parte dei punti aderenti alla retta ottimale, soprattutto al centro, mentre le code si discostano di poco (fig.~\ref{fig:residAnalysis}). Effettuando, infine, il test di Shapiro-Wilk si ottiene un valore praticamente uguale a quello di una distribuzione gaussiana della stessa dimensione:
+\begin{verbatim}
+> shapiro.test(to.hw.r)
+	Shapiro-Wilk normality test
+data:  to.hw.r
+W = 0.99263, p-value = 0.5561
+> shapiro.test(rnorm(167))
+	Shapiro-Wilk normality test
+data:  rnorm(167)
+W = 0.99369, p-value = 0.6896
+\end{verbatim}
+Tutti questi fattori indicano che i residui del modello costruito sono vicini a essere casuali, ma mantengono una parte strutturale dei dati: il modello è da considerare abbastanza soddisfacente.
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{images/hwResid}
+\caption{Residui del modello costruito con il metodo di Holt-Winters}
+\label{fig:hwResid}
+\end{figure}
+\begin{figure}[h]
+\centering
+\includegraphics[width=1\textwidth]{images/residAnalysis}
+\caption{Analisi dei residui}
+\label{fig:residAnalysis}
+\end{figure}
+
+\subsection{Incertezza delle previsioni}
+Vediamo come utilizzare i residui per valutare l'incertezza di eventuali previsioni future. Calcoliamo un intervallo di confidenza al 90\% sulle previsioni future:
+\begin{verbatim}
+> quantile(to.hw.r,0.05)
+        5% 
+-0.5091299 
+> quantile(to.hw.r,0.95)
+      95% 
+0.5444803
+> predict(to.hw,1) + quantile(to.hw.r,0.05)
+         Qtr4
+2019 49.78653
+> predict(to.hw,1) + quantile(to.hw.r,0.95)
+         Qtr4
+2019 50.84014
+\end{verbatim}
+ottenendo un intervallo più o meno incentrato in zero. Per la visualizzazione grafica dell'intervallo di confidenza delle previsioni, si può osservare la figura~\ref{fig:confidenza}.
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{images/confidenza}
+\caption{Intervallo di confidenza delle previsioni future}
+\label{fig:confidenza}
+\end{figure}
+
+\subsection{Autovalidazione}
+Valutiamo, infine, la bontà del modello di smorzamento esponenziale con trend e stagionalità, andando a testarne la capacità di predizione tramite una procedura di autovalidazione. Cerchiamo, quindi, di predire gli ultimi quattro valori della nostra serie, per poi andare a confrontarli con i valori reali: otteniamo dei risultati con un errore di predizione pari al 20\%, non molto soddisfacente (fig.~\ref{fig:prediction}). 
+\begin{verbatim}
+> sqrt(var(pred-real)/var(real))
+[1] 0.1967183
+\end{verbatim}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{images/prediction}
+\caption{Predizioni effettuate dal modello, a confronto con i dati reali}
+\label{fig:prediction}
+\end{figure}
 
 \section{Conclusioni}
-
 
 \end{document}

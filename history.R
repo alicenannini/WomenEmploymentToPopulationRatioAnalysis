@@ -29,14 +29,19 @@ ts.plot(scale(m_to,scale=F),col=heat.colors(42))
 # Evidenziamo il profilo medio:
 lines(rowMeans(scale(m_to)),lwd=3,col="green3")
 # in bianco si vede l'andamento annuale medio
-# Altro grafico per visualizzare la stagionalità:
 par(bg="white")
-boxplot(scale(m_to),pch="*")
 # nada de nada
 to.da = decompose(to)
 plot(to.da)
+plot(to.da$random, col = "red")
+lines(to.da$seasonal)
+legend(1977,0.8,legend=c("seasonal","random"),col=c("black","red"),lty=1,cex=1,bty="n",ncol=2)
+
 to.dm=decompose(to,type="multiplicative")
 plot(to.dm)
+plot(to.dm$random, col = "red")
+lines(to.dm$seasonal)
+legend(1977,0.8,legend=c("seasonal","random"),col=c("black","red"),lty=1,cex=1,bty="n",ncol=2)
 # Non cambia niente:
 plot(to.da$seasonal)
 lines(mean(to.dm$trend,na.rm=T)*(to.dm$seasonal-1),col="red")
@@ -52,7 +57,7 @@ plot(to.dar,pch=20,xlab="Additive")
 to.dmr=as.vector(window(to.dm$random,c(1977,7),c(2019,1)))
 plot(to.dmr,pch=20,xlab="Multiplicative")
 # Residui additivi:
-to.dar=as.vector(window(to.da$random,c(1977,7),c(2019,1)))
+to.dar=as.vector(window(to.da$random,c(1977,7),c(2019,1))) #finestra per non considerare i valori NA
 plot(to.dar,pch=20)
 1 - var(to.dar)/var(window(to,c(1977,7),c(2019,1)))
 acf(to.dar,col="orange")
